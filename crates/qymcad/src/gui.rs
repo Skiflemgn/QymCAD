@@ -1226,7 +1226,22 @@ impl eframe::App for App {
         eframe::set_value(storage, "settings", &self.set);
         eframe::set_value(storage, "last_project", &self.disk.project_path); // the path of the current document
     }
-
+    
+/// TAB, TAKEN BEFORE EGUI SEES IT: while a chain of lines stands, the key switches between the length
+/// and the angle (beginning the typing, if it has not begun) and is filtered out of the raw input - so
+/// the focus navigation of egui never carries the ring away into the sidebars. THE CHAIN, NOT THE
+/// TYPING, is the condition: TAB pressed before the first character must land in the fields all the
+/// same.
+      fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+          if self.tools.armed.drawing() == Some(qymcad_ui_state::SketchShape::Line) && !self.tools.tool.pts.is_empty() {
+            let tab = raw_input.events.iter().any(|e| matches!(e, egui::Event::Key { key: egui::Key::Tab, pressed: true, .. }));
+            if tab {
+                  qymcad_sketch::toggle_line_field(&mut self.tools.tool);
+                  raw_input.events.retain(|e| !matches!(e, egui::Event::Key { key: egui::Key::Tab, .. }));
+               }
+          }
+     }
+     
     /// THE FRAME. Named `ui` rather than `update` since egui 0.36: panels now live inside a `Ui`, and
     /// the framework hands the root one in. The context is still wanted for windows, input and viewport
     /// commands, and it comes from the same place.
